@@ -94,7 +94,7 @@ void  executeCommand(char *command, char *arguments[]){
         
         // Return an error if the execution fails (program does not exists, general errors, etc.)
         if (execvp(command, arguments) < 0) {
-            fprintf(stderr, "Error - Command execution failed. (Did you type in valid command?)\n");
+            fprintf(stderr, "Error - Command execution failed. (Did you type in a valid command?)\n");
             exit(-1);
         }
     }
@@ -180,7 +180,7 @@ void checkHstFile(char *home){
         bic_hst(0);
     } else {
         // Create History File
-        fprintf(stderr, "Error - History file does not exist. Creating a new one.");
+        fprintf(stderr, "Error - History file does not exist. Creating a new one.\n");
         FILE *newhistoryfile = NULL;                // Create file.
         newhistoryfile = fopen(historyfile,"a");    // Write file to disk.
         fclose(newhistoryfile);                     // Close the file.
@@ -194,11 +194,11 @@ void recordHistoryEntry(){
     
     entrytorecord = strdup(buffer);                // Store the buffer contents.
     strcat(entrytorecord, "\n");                     // Append a new line character.
-    
     historyfiletoappend = fopen(historyfile,"a");    // Open file for appending.
     fprintf(historyfiletoappend, "%s", entrytorecord);      // Append the buffer contents to the file.
     fclose(historyfiletoappend);                     // Close the file
     bic_hst(0);                                      // Run the history command quietly.
+    
 }
 
 // Clear History function
@@ -208,7 +208,8 @@ void clearHistory(){
     fclose(historyfiletoclear);                     // Immediately close the file.
     
     // Clear the history array.
-    for (int i = 0; i < history_count; i++){
+    int i = 0;
+    for (i = 0; i < history_count; i++){
         strcpy(history[i], "");
     }
     
@@ -223,7 +224,8 @@ void clearThings(){
     
     // Clear the command space.
     if (parse_count != 0){
-        for(int i = 0; i < parse_count; i++){
+        int i = 0;
+        for(i = 0; i < parse_count; i++){
             //printf("Removing: %i [%s]\n", i, command[i]);
             strcpy(command[i], "");
         }
@@ -239,6 +241,7 @@ void executeHistoricCommand(int history_index){
     if (history_index < history_count){
         strcpy(buffer, history[history_index]); // Copy the desired command into the buffer.
         parseBuffer();     // Parse the command.
+        recordHistoryEntry();
         executeCommand(command[0], command);    //
     }
     else{
@@ -250,15 +253,20 @@ void executeHistoricCommand(int history_index){
 // Signal Handling Function
 void handle_SIGINT(){
     // If Ctrl-C is invoked:
-    printf("\n");   // Print a new line
-    bic_hst(1);     // Invoke history quietly.
+    printf("\n");           // Print a new line
+    strcpy(buffer, "hst");  // Store the command "hst" in the buffer.
+    recordHistoryEntry();   // Record the buffer as a history entry.
+    parseBuffer();          // Parse the buffer.
+    bic_hst(1);             // Run the "hst" command "loudly".
+    clearThings();          // Clear the buffer and command spaces.
+    displayPrompt();        // Display the command prompt.
 }
 
 // vvvvvvvvvvvvvvvvvvvv Main Function vvvvvvvvvvvvvvvvvvv //
 
 int main(int argc, char *argv[]){
     // Environmental Variables
-    char *home = getenv("HOME");  // Home directory path for user.
+    char *home = getenv("HOME");  // User's home directory path.
     
     // Prepares the signal handler.
     struct sigaction handler;
@@ -270,7 +278,7 @@ int main(int argc, char *argv[]){
     // Print welcome message
     printf("Welcome to the Trevor Shell (tsh)!\n");
    
-    // Semi-infinite loop (ends upon "exit" call or Ctrl-C signal.
+    // Semi-infinite loop (ends upon "exit" call)
     while (1){
         // Establish signal handler.
         sigaction(SIGINT, &handler, NULL);  // Signal handler
